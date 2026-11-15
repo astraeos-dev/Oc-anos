@@ -3,11 +3,12 @@
 
 import unittest
 from datetime import date, datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
+from unittest import mock
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import tildes
 
-PARIS = ZoneInfo("Europe/Paris")
+PARIS = tildes.fuseau("Europe/Paris")
 
 
 class TestOndes(unittest.TestCase):
@@ -157,6 +158,53 @@ class TestCoefficient(unittest.TestCase):
         self.assertEqual(tildes.coefficient_depuis_amplitude(tildes.UNITE_HAUTEUR_BREST), 100)
         self.assertEqual(tildes.coefficient_depuis_amplitude(0.1), 20)
         self.assertEqual(tildes.coefficient_depuis_amplitude(9.0), 120)
+
+
+class TestHeureLegale(unittest.TestCase):
+    """Repli sans base IANA (Python sous Windows sans le paquet tzdata)."""
+
+    F = tildes.HEURE_LEGALE_FRANCE
+
+    def test_bascules_2026(self):
+        u = lambda *a: datetime(*a, tzinfo=timezone.utc)
+        self.assertEqual(u(2026, 3, 29, 0, 59).astimezone(self.F).utcoffset(), timedelta(hours=1))
+        self.assertEqual(u(2026, 3, 29, 1, 0).astimezone(self.F).utcoffset(), timedelta(hours=2))
+        self.assertEqual(u(2026, 10, 25, 0, 59).astimezone(self.F).utcoffset(), timedelta(hours=2))
+        self.assertEqual(u(2026, 10, 25, 1, 0).astimezone(self.F).utcoffset(), timedelta(hours=1))
+        self.assertEqual(u(2026, 7, 1).astimezone(self.F).tzname(), "CEST")
+
+    def test_identique_a_zoneinfo(self):
+        try:
+            iana = ZoneInfo("Europe/Paris")
+        except ZoneInfoNotFoundError:
+            self.skipTest("base IANA absente")
+        t = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        while t < datetime(2031, 1, 1, tzinfo=timezone.utc):
+            a, b = t.astimezone(self.F), t.astimezone(iana)
+            self.assertEqual((a.replace(tzinfo=None), a.fold, a.utcoffset()),
+                             (b.replace(tzinfo=None), b.fold, b.utcoffset()), t)
+            t += timedelta(minutes=30)
+        for jour in (date(2026, 3, 29), date(2026, 10, 25), date(2027, 3, 28), date(2027, 10, 31)):
+            for minute in range(0, 24 * 60, 15):
+                for pli in (0, 1):
+                    loc = datetime.combine(jour, datetime.min.time()) + timedelta(minutes=minute)
+                    self.assertEqual(loc.replace(tzinfo=self.F, fold=pli).utcoffset(),
+                                     loc.replace(tzinfo=iana, fold=pli).utcoffset(), (loc, pli))
+
+    def test_marees_sans_base_iana(self):
+        with mock.patch.object(tildes, "ZoneInfo", side_effect=ZoneInfoNotFoundError):
+            self.assertIs(tildes.fuseau(), self.F)
+            with self.assertRaises(ZoneInfoNotFoundError):
+                tildes.fuseau("Europe/London")
+            for jour in (date(2026, 3, 29), date(2026, 10, 25), date(2027, 6, 14)):
+                sans = tildes.extrema_journee(jour)
+                self.assertTrue(all(e["heure"].tzinfo is self.F for e in sans))
+                with mock.patch.object(tildes, "fuseau", return_value=PARIS):
+                    avec = tildes.extrema_journee(jour)
+                self.assertEqual([(e["type"], e["heure"].astimezone(timezone.utc), e["coeff"]) for e in sans],
+                                 [(e["type"], e["heure"].astimezone(timezone.utc), e["coeff"]) for e in avec])
+                self.assertEqual([e["heure"].strftime("%Hh%M") for e in sans],
+                                 [e["heure"].strftime("%Hh%M") for e in avec])
 
 
 class TestCompatibilite(unittest.TestCase):

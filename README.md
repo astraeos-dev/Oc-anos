@@ -26,6 +26,8 @@ tildes.courbe(t, t + timedelta(days=1), 10)      # marégramme au pas de 10 min
 
 Les heures sont rendues en heure légale (`Europe/Paris`), mais tout le calcul se fait en UTC. Un `datetime` naïf est lu comme de l'UTC.
 
+Sous Windows, Python n'embarque pas la base des fuseaux horaires. `tildes.py` applique alors sa propre règle de l'heure légale française (`HeureLegaleFrance`, règle de l'UE en vigueur depuis 1996), qui donne les mêmes heures que `zoneinfo` de 2020 à 2030. Rien n'est donc à installer pour `Europe/Paris`. Pour un autre fuseau, installez `tzdata` (`py -m pip install tzdata`).
+
 ## Méthode
 
 h(t) = Z0 + Σ f · H · cos(V(t) + u − G)
