@@ -1,4 +1,24 @@
-# Océanos
+<p align="center"><img src="assets/brand/icon.svg" width="128" height="128" alt="Océanos"></p>
+
+# Océanos — les marées des côtes françaises, hors ligne
+
+> Pleines mers, basses mers, hauteurs d'eau et coefficients de marée à Cherbourg et à Brest, calculés par analyse harmonique, sans réseau ni dépendance.
+
+[![Licence MIT](https://img.shields.io/github/license/astraeos-dev/Oc-anos?label=licence)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python)
+
+<a href="https://buymeacoffee.com/gregorychau"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="40"></a>
+
+**Utiliser** : `python3 tildes.py`, rien à installer. Une idée, un problème ?
+[Ouvrir une demande](https://github.com/astraeos-dev/Oc-anos/issues/new/choose).
+
+**Projet actif** · un des projets d'Astraeos : [site web](https://astraeos-dev.github.io/personnal-site/) ·
+[Céleste](https://github.com/astraeos-dev/Celeste_App) · [Helios](https://github.com/astraeos-dev/Helios) ·
+[astraeos-astro](https://github.com/astraeos-dev/astraeos-astro)
+
+---
+
+## Présentation
 
 Calcul harmonique des marées pour les côtes françaises, **100 % hors ligne** : aucun appel réseau, aucune API, aucune dépendance au SHOM. Le moteur `tildes.py` donne pour Cherbourg-en-Cotentin (et Brest) les pleines mers (PM), les basses mers (BM), les hauteurs d'eau au-dessus du zéro hydrographique et les coefficients de marée. Il n'utilise que la bibliothèque standard de Python (3.9 ou plus récent).
 
