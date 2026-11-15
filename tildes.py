@@ -40,10 +40,85 @@ l'affichage, ce qui rend exacts les jours de changement d'heure.
 import argparse
 import bisect
 import math
-from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
+from datetime import date, datetime, time, timedelta, timezone, tzinfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 FUSEAU_DEFAUT = "Europe/Paris"
+
+
+class HeureLegaleFrance(tzinfo):
+    """Heure légale de la France métropolitaine, sans base de fuseaux horaires.
+
+    Règle de l'Union européenne, en vigueur depuis 1996 : heure d'été (CEST,
+    UTC+2) du dernier dimanche de mars à 1 h UTC au dernier dimanche d'octobre
+    à 1 h UTC, heure d'hiver (CET, UTC+1) le reste de l'année. Sert de repli
+    quand Python n'a pas la base IANA des fuseaux (Windows sans le paquet
+    tzdata). Les heures locales inexistantes ou répétées suivent le PEP 495
+    (attribut fold), comme zoneinfo.
+    """
+
+    HIVER, ETE = timedelta(hours=1), timedelta(hours=2)
+
+    @staticmethod
+    def bascules(annee: int):
+        """Instants UTC (naïfs) du passage à l'heure d'été et à l'heure d'hiver."""
+        def dernier_dimanche(mois):
+            fin_mois = date(annee, mois, 31)
+            return datetime.combine(fin_mois - timedelta(days=(fin_mois.weekday() + 1) % 7), time(1))
+        return dernier_dimanche(3), dernier_dimanche(10)
+
+    def utcoffset(self, dt):
+        if dt is None:
+            return self.HIVER
+        ete, hiver = self.bascules(dt.year)
+        local = dt.replace(tzinfo=None, fold=0)
+        h = timedelta(hours=1)
+        if ete + 2 * h <= local < hiver + h:
+            return self.ETE
+        if ete + h <= local < ete + 2 * h:      # 2 h-3 h le jour du passage à l'été : inexistante
+            return self.ETE if dt.fold else self.HIVER
+        if hiver + h <= local < hiver + 2 * h:  # 2 h-3 h le jour du retour : répétée
+            return self.HIVER if dt.fold else self.ETE
+        return self.HIVER
+
+    def dst(self, dt):
+        return self.utcoffset(dt) - self.HIVER
+
+    def tzname(self, dt):
+        return "CEST" if self.dst(dt) else "CET"
+
+    def fromutc(self, dt):
+        if dt.tzinfo is not self:
+            raise ValueError("fromutc : dt.tzinfo n'est pas self")
+        utc = dt.replace(tzinfo=None)
+        ete, hiver = self.bascules(utc.year)
+        if ete <= utc < hiver:
+            return (utc + self.ETE).replace(tzinfo=self)
+        repetee = hiver <= utc < hiver + timedelta(hours=1)
+        return (utc + self.HIVER).replace(tzinfo=self, fold=int(repetee))
+
+    def __repr__(self):
+        return "HeureLegaleFrance()"
+
+
+HEURE_LEGALE_FRANCE = HeureLegaleFrance()
+
+
+def fuseau(nom: str = FUSEAU_DEFAUT) -> tzinfo:
+    """Fuseau horaire `nom` (base IANA de zoneinfo).
+
+    Sans base IANA (cas de Python sous Windows sans le paquet tzdata),
+    « Europe/Paris » est remplacé par HEURE_LEGALE_FRANCE ; tout autre fuseau
+    demande d'installer tzdata.
+    """
+    try:
+        return ZoneInfo(nom)
+    except ZoneInfoNotFoundError:
+        if nom == "Europe/Paris":
+            return HEURE_LEGALE_FRANCE
+        raise ZoneInfoNotFoundError(
+            f"fuseau {nom!r} introuvable : installez le paquet tzdata "
+            "(py -m pip install tzdata)") from None
 
 # ==============================================================================
 # 1. DÉFINITION DES ONDES (constituantes harmoniques)
@@ -791,7 +866,7 @@ def extrema_periode(debut: datetime, fin: datetime, port: Port = CHERBOURG,
     Retourne une liste de dicts {"type": "PM"|"BM", "heure": datetime aware
     en heure locale, "hauteur": m, "coeff": int pour les PM, None pour les BM}.
     """
-    tz = ZoneInfo(tz_nom)
+    tz = fuseau(tz_nom)
     debut, fin = en_utc(debut), en_utc(fin)
     marge = timedelta(hours=3)
     bruts = _extrema_bruts(port, debut - marge, fin + marge)
@@ -812,7 +887,7 @@ def extrema_periode(debut: datetime, fin: datetime, port: Port = CHERBOURG,
 
 def extrema_journee(jour: date, port: Port = CHERBOURG, tz_nom: str = FUSEAU_DEFAUT) -> list:
     """PM et BM du jour civil local `jour` (journées de 23 h ou 25 h comprises)."""
-    tz = ZoneInfo(tz_nom)
+    tz = fuseau(tz_nom)
     debut = datetime.combine(jour, time(0, 0), tzinfo=tz)
     fin = datetime.combine(jour + timedelta(days=1), time(0, 0), tzinfo=tz)
     return extrema_periode(debut, fin, port, tz_nom)
@@ -847,7 +922,7 @@ def main(argv=None):
     parser.add_argument("-p", "--port", default="CHERBOURG", choices=sorted(PORTS),
                         help="port (défaut : CHERBOURG)")
     args = parser.parse_args(argv)
-    jour = date.fromisoformat(args.date) if args.date else datetime.now(ZoneInfo(FUSEAU_DEFAUT)).date()
+    jour = date.fromisoformat(args.date) if args.date else datetime.now(fuseau()).date()
     for i in range(args.jours):
         print()
         afficher_annuaire(jour + timedelta(days=i), PORTS[args.port])
