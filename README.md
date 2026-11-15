@@ -40,7 +40,8 @@ h(t) = Z0 + Σ f · H · cos(V(t) + u − G)
   - 40 ondes de petits fonds et astronomiques (ter-, quart-, sixième- à douzième-diurnes, MO3, MK3, ML4, 3MS4, M10, etc.) ;
   - les 6 satellites nodaux ;
   - les raies de marée trouvées dans le spectre du résidu (amplitude ≥ 2 mm) : 49 à Cherbourg et 31 à Brest. Ce sont des ondes de petits fonds d'ordre élevé (SKM2, 3M2S2, 2MK2, MSL6…), des modulations saisonnières et des satellites. Chacune reçoit la correction nodale de la combinaison d'ondes mères la plus plausible.
-- **Z0** est le niveau moyen officiel du SHOM : 3,87 m à Cherbourg et 4,14 m à Brest. C'est celui des Références altimétriques maritimes, publié dans les métadonnées des marégraphes REFMAR, et celui de l'annuaire officiel, dont les hauteurs sont ainsi reproduites. La mer réelle est aujourd'hui plus haute : le niveau moyen observé attendu en 2027 est de 3,938 m à Cherbourg et 4,278 m à Brest (`NIVEAU_MOYEN_OBSERVE_2027`, tendance des 21 dernières années : +6,0 et +6,9 mm/an). Pour prédire la mer réelle plutôt que l'annuaire, il suffit de donner ces valeurs à `z0`.
+- **Z0** est le niveau moyen officiel du SHOM : 3,87 m à Cherbourg et 4,14 m à Brest. C'est celui des Références altimétriques maritimes, publié dans les métadonnées des marégraphes REFMAR, et celui de l'annuaire officiel, dont les hauteurs sont ainsi reproduites. La mer réelle est aujourd'hui plus haute : le niveau moyen observé attendu en 2027 est de 3,938 m à Cherbourg et 4,278 m à Brest (`NIVEAU_MOYEN_OBSERVE_2027`, tendance des 21 dernières années : +6,0 et +6,9 mm/an). Pour prédire la mer réelle plutôt que l'annuaire, il suffit de donner ces valeurs à `z0` et, à Cherbourg, de reprendre les constantes REFMAR sans calage (`CONSTANTES_REFMAR_CHERBOURG`).
+- **Calage du marnage (Cherbourg).** Le marnage de l'annuaire est un peu plus grand que celui de nos constantes REFMAR : de 0,9 % en mortes-eaux et de 1,3 % en vives-eaux. Les amplitudes de M2 et de S2 sont donc multipliées par 1,0135 et 1,0116 (`CALAGE_ANNUAIRE_CHERBOURG`). Ces facteurs sont ajustés sur 54 PM et BM officielles du 15 au 28 novembre 2026. Des réglages plus riches (N2, K2, K1, O1, phases, ondes de petits fonds) collaient mieux à la semaine ajustée, mais se dégradaient sur l'autre : ce sont les seuls qui tiennent en validation croisée.
 - **Extrema** : ce sont les zéros de la dérivée analytique dh/dt. Ils sont encadrés toutes les 10 min puis affinés par bissection. Deux extrema voisins séparés de moins de 2 cm (simple ondulation) sont écartés.
 - **Coefficient** : il suit la définition française. Il est calculé à Brest avec les seules ondes semi-diurnes : C = 100 · A / U, où A est l'amplitude de la pleine mer semi-diurne et U = 3,05 m l'unité de hauteur. Chaque pleine mer locale reçoit le coefficient de la pleine mer de Brest de la même onde de marée, environ 4 h 07 plus tôt pour Cherbourg. Le SHOM calcule ce coefficient avec ses propres constantes de Brest. Les écarts entre nos coefficients et les siens oscillaient au rythme du mois anomalistique (27,5 jours), signe que N2 surtout y diffère de l'analyse TICON-4. `BREST_COEFFICIENT` part donc de TICON-4 et remplace M2, S2, N2, K2, L2 et NU2 par des valeurs effectives. Elles sont ajustées sur 232 coefficients officiels (novembre 2026 à février 2027) et sur la liste ouverte des grandes marées de Saint-Malo (2014-2028).
 
@@ -48,16 +49,18 @@ h(t) = Z0 + Σ f · H · cos(V(t) + u − G)
 
 ### Accord avec l'annuaire officiel (SHOM)
 
-C'est la référence. Prédictions officielles de Cherbourg du 15 au 21 novembre 2026 (mortes-eaux, 26 PM et BM) :
+C'est la référence. Prédictions officielles de Cherbourg du 15 au 28 novembre 2026 : une semaine de mortes-eaux puis une de vives-eaux (coefficients de 34 à 97), soit 54 PM et BM :
 
 | Écart à l'annuaire officiel | Version précédente | Version actuelle |
 | --- | --- | --- |
-| Heure des PM (biais / RMS / max) | −1,7 / 3,0 / 5,6 min | −1,7 / 3,0 / 5,6 min |
-| Heure des BM (biais / RMS / max) | −0,1 / 1,7 / 2,4 min | −0,1 / 1,7 / 2,4 min |
-| Hauteur des PM (biais / RMS / max) | +5,7 / 5,9 / 8,1 cm | −1,1 / 2,1 / 4,1 cm |
-| Hauteur des BM (biais / RMS / max) | +7,8 / 7,9 / 10,2 cm | +1,0 / 1,6 / 3,4 cm |
-| Hauteurs à moins de 1 % de la valeur officielle | 6 sur 26 | 25 sur 26 |
-| Coefficients exacts | 7 sur 13 | 8 sur 13 |
+| Heure des PM (biais / RMS / max) | +0,0 / 2,4 / 5,6 min | +0,7 / 2,4 / 4,7 min |
+| Heure des BM (biais / RMS / max) | +0,6 / 1,5 / 2,4 min | +0,6 / 1,5 / 2,3 min |
+| Hauteur des PM (biais / RMS / max) | +4,4 / 4,8 / 8,1 cm | +0,0 / 1,7 / 3,5 cm |
+| Hauteur des BM (biais / RMS / max) | +9,0 / 9,2 / 11,4 cm | −0,2 / 1,2 / 3,1 cm |
+| Hauteurs à moins de 1 % de la valeur officielle | 20 sur 54 | 52 sur 54 |
+| Coefficients exacts | 9 sur 27 | 20 sur 27 |
+
+Les deux hauteurs au-delà de 1 % sont des BM, à 1,15 % (3,1 cm) et 1,22 % (1,7 cm sur une BM de 1,36 m). Une BM de vives-eaux d'environ 1 m ne tolère que 1 cm d'écart, à peine plus que l'arrondi au centimètre de l'annuaire.
 
 Coefficients officiels de Cherbourg, de novembre 2026 à février 2027 (232 PM, de 32 à 110) :
 
@@ -105,6 +108,8 @@ Les constantes publiées dans `tildes.py` ont ensuite été recalculées sur tou
 
 Avec le niveau moyen observé (`NIVEAU_MOYEN_OBSERVE_2027`) au lieu du niveau officiel, le niveau moyen de 2026 est reproduit à −0,7 cm près à Cherbourg et à −1,2 cm près à Brest.
 
+Ces tableaux portent sur les constantes REFMAR sans calage. Calées sur l'annuaire, les hauteurs de Cherbourg s'écartent un peu plus de la mer réelle de 2026 : 6,1 cm RMS au lieu de 5,1 pour les PM, 4,7 cm au lieu de 4,1 pour les BM, hors surcote. Le marnage de l'annuaire est en effet plus grand que celui observé. Les horaires, eux, ne changent pas.
+
 Dans ces écarts, la « hauteur hors surcote » retire la surcote météorologique, estimée par la moyenne glissante sur 25 h du résidu.
 
 L'erreur restante vient surtout de la météo, qu'aucun modèle astronomique ne prévoit. À Cherbourg, une surcote de plus de 30 cm retarde la BM de 6 min en moyenne, et les plus gros écarts (30 à 60 min) surviennent pendant les tempêtes, par exemple en janvier 2025 et en janvier 2026. Les mortes-eaux restent les plus difficiles (6,9 min RMS), parce que la courbe y est très plate autour de la pleine mer.
@@ -115,7 +120,8 @@ Pour mémoire, la version à constantes TICON-4 avait été validée sur l'annua
 
 - Ce sont des prédictions astronomiques. Les effets météorologiques n'y figurent pas : surcote ou décote, environ 1 cm par hPa d'écart à 1013 hPa, plus le vent. Ils décalent aussi les heures (voir plus haut).
 - Z0 est le niveau moyen officiel, comme dans l'annuaire. La mer réelle est en moyenne 7 cm plus haute à Cherbourg et 14 cm plus haute à Brest, et l'écart grandit d'environ 6 mm par an. Le Z0 de Brest n'a pas été contrôlé contre des hauteurs officielles de Brest.
-- L'échantillon officiel d'heures et de hauteurs ne couvre qu'une semaine de mortes-eaux. Les vives-eaux restent à vérifier. Les PM de l'annuaire sortent en moyenne 1,7 min après les nôtres, et jusqu'à 5,6 min. Face à la mer observée, ce sont plutôt les PM officielles de mortes-eaux qui sont en retard.
+- L'échantillon officiel d'heures et de hauteurs couvre deux semaines de novembre 2026 (un cycle mortes-eaux puis vives-eaux). Le calage du marnage est à revérifier sur d'autres saisons et dans quelques années : on ne sait pas si l'écart avec le SHOM est constant ou s'il suit le cycle nodal.
+- Les horaires restent à 2,4 min RMS de l'annuaire pour les PM (4,7 min au pire) et à 1,5 min pour les BM. Nos PM sont un peu en avance en mortes-eaux et en retard en vives-eaux : cela tient à la forme de la courbe près de la pleine mer (ondes de petits fonds), qu'il faudrait caler sur beaucoup plus de semaines officielles.
 - Les satellites nodaux sont estimés sur 31 ans à Cherbourg et 26 ans à Brest, soit 1,4 à 1,7 cycle nodal. Il faut au moins 18,6 ans d'observations pour les séparer de leur onde mère.
 - Environ un coefficient sur quatre diffère encore d'un point de la valeur officielle. Les constantes du coefficient sont calées sur quatre mois d'hiver et sur les seuils de grandes marées ; des coefficients officiels de printemps et d'été affineraient l'ajustement.
 
@@ -157,11 +163,13 @@ Troisième série, calage sur l'annuaire officiel :
 
 11. **Niveau moyen officiel.** Z0 passe au niveau moyen du SHOM : 3,87 m à Cherbourg et 4,14 m à Brest. À Cherbourg, l'écart de hauteur à l'annuaire tombe de +6 à +8 cm à environ ± 1 cm.
 12. **Coefficients.** Les constantes de Brest servant au coefficient (`BREST_COEFFICIENT`) sont ajustées sur les coefficients officiels : 74 % d'exacts au lieu de 41 %, 100 % à ± 1 au lieu de 89 %, et aucun biais.
+13. **Marnage de Cherbourg.** M2 et S2 sont relevés de 1,35 % et 1,16 %. Sur deux semaines officielles, 52 hauteurs sur 54 sont à moins de 1 %, au lieu de 20.
 
 ## Sources et licences
 
 - Observations marégraphiques : réseau REFMAR (SHOM et partenaires), marégraphes de Cherbourg (n° 13) et de Brest (n° 3), données validées en temps différé, téléchargées sur data.shom.fr. Le site refmar.shom.fr indique que ses contenus sont sous licence Etalab 2.0 « sauf mention contraire ». Seules les constantes harmoniques que nous en avons tirées figurent dans ce dépôt.
 - Niveaux moyens officiels : SHOM, Références altimétriques maritimes, via les métadonnées des marégraphes REFMAR (services.data.shom.fr).
+- Calage du marnage de Cherbourg : 54 PM et BM officielles du 15 au 28 novembre 2026 (pages de maree.info, © SHOM), utilisées pour l'ajustement seulement et non reproduites ici.
 - Calage des coefficients :
   - 232 coefficients officiels de Cherbourg, de novembre 2026 à février 2027 (calendrier de maree.info, « d'après les prédictions officielles © SHOM »), utilisés pour l'ajustement seulement et non reproduits ici ;
   - liste des grandes marées de la Ville de Saint-Malo, 2014-2028 (data.gouv.fr, Licence Ouverte).

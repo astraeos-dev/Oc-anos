@@ -46,6 +46,15 @@ class TestOndes(unittest.TestCase):
         self.assertIn("MK4", port.constantes)
         self.assertNotIn("MK4", port.observees)
 
+    def test_calage_annuaire_cherbourg(self):
+        for onde, (H, G) in tildes.CONSTANTES_REFMAR_CHERBOURG.items():
+            f = tildes.CALAGE_ANNUAIRE_CHERBOURG.get(onde, 1.0)
+            self.assertAlmostEqual(tildes.CHERBOURG.constantes[onde][0], H * f, places=9)
+            self.assertEqual(tildes.CHERBOURG.constantes[onde][1], G)
+        self.assertTrue(set(tildes.CALAGE_ANNUAIRE_CHERBOURG) <= {"M2", "S2"})
+        for f in tildes.CALAGE_ANNUAIRE_CHERBOURG.values():
+            self.assertTrue(1.0 < f < 1.02)
+
     def test_satellites_nodaux(self):
         # Même onde que la mère, à ±1 sur N' près, sans correction nodale.
         for onde, (coeffs, regle) in tildes.SATELLITES_NODAUX.items():
