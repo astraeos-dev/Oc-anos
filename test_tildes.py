@@ -36,7 +36,7 @@ class TestOndes(unittest.TestCase):
             self.assertTrue(abs(nod["M2"][1]) < 2.2)
 
     def test_inference_ne_remplace_pas_les_observations(self):
-        port = tildes.CHERBOURG
+        port = tildes.BREST_TICON
         for onde, valeur in port.observees.items():
             if onde in tildes.ONDES_NON_RETENUES:
                 self.assertNotIn(onde, port.constantes)
@@ -44,6 +44,37 @@ class TestOndes(unittest.TestCase):
                 self.assertEqual(port.constantes[onde], valeur)
         self.assertIn("MK4", port.constantes)
         self.assertNotIn("MK4", port.observees)
+
+    def test_satellites_nodaux(self):
+        # Même onde que la mère, à ±1 sur N' près, sans correction nodale.
+        for onde, (coeffs, regle) in tildes.SATELLITES_NODAUX.items():
+            mere, signe = onde[:-2], 1 if onde.endswith("+N") else -1
+            attendu = list(tildes.ONDES[mere][0])
+            attendu[4] += signe
+            self.assertEqual(tuple(attendu), coeffs, onde)
+            self.assertIsNone(regle)
+
+    def test_raies_empiriques_composees(self):
+        # La règle nodale d'une raie est une combinaison d'ondes mères de même
+        # fréquence (τ, s, h, p).
+        for onde, (coeffs, regle) in tildes.RAIES_EMPIRIQUES.items():
+            if regle is None:
+                continue
+            somme = [sum(k * tildes.ONDES[m][0][i] for m, k in regle) for i in range(4)]
+            self.assertEqual(tuple(somme), coeffs[:4], onde)
+
+    def test_ondes_separables(self):
+        # Les ondes de chaque port sont séparables sur la durée des
+        # observations analysées (critère de Rayleigh, ≥ 26 ans).
+        for port in (tildes.CHERBOURG, tildes.BREST):
+            w = sorted(tildes.vitesse(o) for o in port.constantes)
+            ecart = min(b - a for a, b in zip(w, w[1:]))
+            self.assertGreater(ecart * 26 * 8766, 360.0, port.nom)
+
+    def test_ondes_definies(self):
+        for port in (tildes.CHERBOURG, tildes.BREST, tildes.BREST_TICON):
+            self.assertTrue(set(port.constantes) <= set(tildes.ONDES))
+            self.assertTrue(3.5 < port.z0 < 4.5)
 
 
 class TestExtrema(unittest.TestCase):
@@ -107,6 +138,20 @@ class TestCoefficient(unittest.TestCase):
         self.assertTrue(all(20 <= c <= 120 for c in coeffs))
         self.assertGreaterEqual(max(coeffs), 100)  # vives-eaux d'équinoxe
         self.assertLessEqual(min(coeffs), 40)      # mortes-eaux
+
+    def test_decalage_brest(self):
+        self.assertAlmostEqual(tildes.decalage_brest(tildes.BREST), 0.0, delta=0.1)
+        self.assertAlmostEqual(tildes.decalage_brest(tildes.CHERBOURG), 4.1, delta=0.2)
+
+    def test_coefficient_identique_a_brest_et_cherbourg(self):
+        # Une PM de Cherbourg reçoit le coefficient de la PM de Brest de la
+        # même onde de marée, environ 4 h plus tôt.
+        brest = [e for e in tildes.extrema_journee(date(2027, 3, 10), tildes.BREST) if e["type"] == "PM"]
+        for e in brest:
+            t = e["heure"] + timedelta(hours=tildes.decalage_brest(tildes.CHERBOURG))
+            proche = min((x for x in tildes.extrema_periode(t - timedelta(hours=3), t + timedelta(hours=3))
+                          if x["type"] == "PM"), key=lambda x: abs(x["heure"] - t))
+            self.assertEqual(proche["coeff"], e["coeff"])
 
     def test_amplitude_unite(self):
         self.assertEqual(tildes.coefficient_depuis_amplitude(tildes.UNITE_HAUTEUR_BREST), 100)
