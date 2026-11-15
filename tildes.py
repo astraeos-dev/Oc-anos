@@ -26,7 +26,7 @@ Modèle
   Brest (données validées au pas de 10 min, voir outils/ajuster.py) : ondes
   astronomiques et de petits fonds, plus les raies de marée trouvées dans le
   spectre du résidu. Aucune prédiction ni constante harmonique du SHOM n'est
-  utilisée. Le coefficient garde les constantes TICON-4 de Brest (BREST_TICON).
+  utilisée. Z0 est le niveau moyen officiel du SHOM, celui de l'annuaire.
 * Extrema : zéros de la dérivée analytique dh/dt, encadrés toutes les 10 min
   puis affinés par bissection (écart < 1 s avec la solution exacte du modèle).
 * Coefficient : définition française, calculé à Brest sur les seules ondes
@@ -408,13 +408,16 @@ class Port:
 # des hauteurs d'eau observées, données validées en temps différé au pas de
 # 10 min du réseau REFMAR (SHOM, data.shom.fr). H en mètres au-dessus du zéro
 # hydrographique, G = déphasage de Greenwich en degrés (UTC).
-# Z0 : niveau moyen attendu en 2027, d'après la tendance des moyennes annuelles
-# observées sur les 21 dernières années (la hausse s'est accélérée).
+# Z0 : niveau moyen officiel du SHOM (Références altimétriques maritimes, publié
+# dans les métadonnées des marégraphes REFMAR) : c'est celui de l'annuaire
+# officiel, dont les hauteurs sont ainsi reproduites. Le niveau moyen observé
+# récemment est plus haut (NIVEAU_MOYEN_OBSERVE_2027) ; pour prédire la mer
+# réelle plutôt que l'annuaire, remplacer z0 par cette valeur.
 #
 # Cherbourg : marégraphe REFMAR n° 13, 1995-2025 (1,61 million de mesures),
 # 145 ondes ; tendance du niveau moyen +6,03 mm/an.
 CHERBOURG = Port(
-    "Cherbourg", 49.6514, -1.6355, 3.938,
+    "Cherbourg", 49.6514, -1.6355, 3.87,
     {
         "M2": (1.86931, 228.491), "S2": (0.69654, 272.628), "N2": (0.37200, 209.302),
         "K2": (0.19847, 270.539), "M4": (0.14493, 354.623), "K1": (0.09346, 107.120),
@@ -478,7 +481,7 @@ CHERBOURG = Port(
 # Brest : marégraphe REFMAR n° 3, 2000-2025 (1,36 million de mesures), 127 ondes ;
 # tendance du niveau moyen +6,86 mm/an.
 BREST = Port(
-    "Brest", 48.3829, -4.4950, 4.278,
+    "Brest", 48.3829, -4.4950, 4.14,
     {
         "M2": (2.04967, 108.626), "S2": (0.75249, 148.547), "N2": (0.41728, 90.369),
         "K2": (0.21297, 146.468), "MU2": (0.08785, 104.406), "NU2": (0.07748, 86.131),
@@ -535,8 +538,8 @@ BREST = Port(
 # H en mètres, G = déphasage de Greenwich en degrés (UTC).
 #
 # Brest, TICON-4 (marégraphe REFMAR n° 3, observations 1846-2025 ; Z0 observé
-# sur 05/2006-04/2009) : base du coefficient de marée, validé avec ces
-# constantes contre les coefficients officiels (voir README).
+# sur 05/2006-04/2009) : point de départ des constantes du coefficient
+# (BREST_COEFFICIENT) et liste des ondes de base de outils/ajuster.py.
 BREST_TICON = Port(
     "Brest (TICON-4)", 48.3829, -4.4950, 4.163,
     {
@@ -558,6 +561,29 @@ BREST_TICON = Port(
         "2MK5": (0.00199, 43.912), "OO1": (0.00139, 212.780), "MSQM": (0.00117, 250.315),
         "MTM": (0.00113, 135.118), "2MO5": (0.00097, 321.361),
     },
+)
+
+# Niveau moyen observé attendu en 2027 (m), d'après la tendance des moyennes
+# annuelles REFMAR des 21 dernières années (outils/ajuster.py).
+NIVEAU_MOYEN_OBSERVE_2027 = {"CHERBOURG": 3.938, "BREST": 4.278}
+
+# Ondes semi-diurnes de Brest servant au coefficient de marée. Base TICON-4 ;
+# M2, S2, N2, K2, L2 et NU2 sont des valeurs effectives ajustées pour reproduire
+# les coefficients officiels (232 coefficients de novembre 2026 à février 2027,
+# et la liste ouverte des grandes marées de Saint-Malo 2014-2028, Licence
+# Ouverte) : le SHOM calcule le coefficient avec ses propres constantes de
+# Brest, dont N2 en particulier diffère de l'analyse TICON-4. La phase de M2,
+# indéterminée par cet ajustement, est celle de TICON-4.
+BREST_COEFFICIENT = Port(
+    "Brest (coefficient)", 48.3829, -4.4950, 0.0,
+    {
+        "M2": (2.03766, 108.993), "S2": (0.74067, 147.916), "N2": (0.39801, 84.741),
+        "K2": (0.21583, 140.968), "MU2": (0.08572, 105.072), "NU2": (0.08291, 94.815),
+        "2N2": (0.05703, 72.807), "L2": (0.05077, 133.552), "T2": (0.04169, 138.562),
+        "LAMBDA2": (0.02627, 75.818), "EP2": (0.01969, 89.435), "2SM2": (0.01731, 312.051),
+        "MKS2": (0.00760, 174.815), "R2": (0.00534, 157.872),
+    },
+    inferer=False, exclues=frozenset(),
 )
 
 PORTS = {"CHERBOURG": CHERBOURG, "BREST": BREST}
@@ -807,17 +833,17 @@ def decalage_brest(port: Port) -> float:
     """Retard moyen (h) de la PM du port sur celle de Brest pour la même onde
     de marée, déduit de la différence de situation de M2 (−2,07 à 10,35 h :
     la marée remonte la Manche depuis Brest ; Brest elle-même est à 0 h)."""
-    dg = (port.constantes["M2"][1] - BREST_TICON.constantes["M2"][1] + 60.0) % 360.0 - 60.0
+    dg = (port.constantes["M2"][1] - BREST_COEFFICIENT.constantes["M2"][1] + 60.0) % 360.0 - 60.0
     return dg / vitesse("M2")
 
 
 def pleines_mers_semi_diurnes_brest(debut: datetime, fin: datetime):
     """[(instant UTC, amplitude m)] des PM de la marée semi-diurne de Brest.
 
-    Calculées avec les constantes TICON-4 de Brest (BREST_TICON), sur
-    lesquelles le coefficient a été validé contre les coefficients officiels.
+    Calculées avec BREST_COEFFICIENT, dont les constantes reproduisent les
+    coefficients officiels.
     """
-    bruts = _extrema_bruts(BREST_TICON, en_utc(debut), en_utc(fin), _semi_diurne_coefficient)
+    bruts = _extrema_bruts(BREST_COEFFICIENT, en_utc(debut), en_utc(fin), _semi_diurne_coefficient)
     return [(t, h) for t, typ, h in bruts if typ == "PM"]
 
 

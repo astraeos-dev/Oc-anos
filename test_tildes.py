@@ -140,6 +140,18 @@ class TestCoefficient(unittest.TestCase):
         self.assertGreaterEqual(max(coeffs), 100)  # vives-eaux d'équinoxe
         self.assertLessEqual(min(coeffs), 40)      # mortes-eaux
 
+    def test_constantes_du_coefficient_semi_diurnes(self):
+        for onde in tildes.BREST_COEFFICIENT.constantes:
+            self.assertEqual(tildes.ONDES[onde][0][0], 2, onde)
+
+    def test_grandes_marees_saint_malo(self):
+        # Liste ouverte des grandes marées (coefficient ≥ 100) de la Ville de
+        # Saint-Malo (data.gouv.fr, Licence Ouverte) : 23-25/01 et 21-24/02/2027.
+        grandes = {date(2027, 1, d) for d in (23, 24, 25)} | {date(2027, 2, d) for d in (21, 22, 23, 24)}
+        for jour in [date(2027, 1, d) for d in range(21, 28)] + [date(2027, 2, d) for d in range(19, 27)]:
+            cmax = max(e["coeff"] for e in tildes.extrema_journee(jour, tildes.BREST) if e["type"] == "PM")
+            self.assertEqual(cmax >= 100, jour in grandes, (jour, cmax))
+
     def test_decalage_brest(self):
         self.assertAlmostEqual(tildes.decalage_brest(tildes.BREST), 0.0, delta=0.1)
         self.assertAlmostEqual(tildes.decalage_brest(tildes.CHERBOURG), 4.1, delta=0.2)
